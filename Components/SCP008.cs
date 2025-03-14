@@ -1,128 +1,114 @@
-﻿using UnityEngine;
-using MEC;
+﻿using MEC;
 using System.Collections.Generic;
 using Exiled.API.Features;
-using Exiled.Events.EventArgs;
+using Exiled.Events.EventArgs.Player;
+using PlayerRoles;
+using UnityEngine;
+using DamageType = Exiled.API.Enums.DamageType;
 
-namespace SCP008X.Components
+namespace SCP008X.Components;
+
+public class Scp008 : MonoBehaviour
 {
-    public class SCP008 : MonoBehaviour
+    private Player _ply;
+    private float _curAhp;
+    private CoroutineHandle _ahp;
+    private CoroutineHandle _s008;
+    public void Awake()
     {
-        private Player ply;
-        private float curAHP = 0;
-        CoroutineHandle ahp;
-        CoroutineHandle s008;
-        public void Awake()
-        {
-            ply = Player.Get(gameObject);
-            ahp = Timing.RunCoroutine(RetainAHP());
-            s008 = Timing.RunCoroutine(Infection());
-            Exiled.Events.Handlers.Player.Hurting += WhenHurt;
-            Exiled.Events.Handlers.Player.ChangingRole += WhenRoleChange;
-        }
-        public void OnDestroy()
-        {
-            Exiled.Events.Handlers.Player.Hurting -= WhenHurt;
-            Exiled.Events.Handlers.Player.ChangingRole -= WhenRoleChange;
-            ply = null;
-            Timing.KillCoroutines(ahp);
-            Timing.KillCoroutines(s008);
-        }
-        public void WhenHurt(HurtingEventArgs ev)
-        {
-            if (ev.Target != ply || ev.Target.Role != RoleType.Scp0492)
-                return;
+        _ply = Player.Get(gameObject);
+        _ahp = Timing.RunCoroutine(RetainAhp());
+        _s008 = Timing.RunCoroutine(Infection());
+        Exiled.Events.Handlers.Player.Hurting += WhenHurt;
+        Exiled.Events.Handlers.Player.ChangingRole += WhenRoleChange;
+    }
+    public void OnDestroy()
+    {
+        Exiled.Events.Handlers.Player.Hurting -= WhenHurt;
+        Exiled.Events.Handlers.Player.ChangingRole -= WhenRoleChange;
+        _ply = null;
+        Timing.KillCoroutines(_ahp);
+        Timing.KillCoroutines(_s008);
+    }
 
-            if (curAHP > 0)
-                curAHP -= ev.Amount;
-            else
-                curAHP = 0;
-        }
-        public void WhenRoleChange(ChangingRoleEventArgs ev)
-        {
-            if (ev.Player != ply)
-                return;
+    private void WhenHurt(HurtingEventArgs ev)
+    {
+        if (ev.Player != _ply || ev.Player.Role != RoleTypeId.Scp0492)
+            return;
 
-            switch (ev.Player.Team)
-            {
-                case Team.SCP:
-                    switch (ev.NewRole)
-                    {
-                        case RoleType.Scp0492:
-                            Timing.RunCoroutine(RetainAHP());
-                            Log.Debug($"Started coroutine for {ply.Nickname}: RetainAHP.", SCP008X.Instance.Config.DebugMode);
-                            break;
-                        case RoleType.Scp096:
-                            Timing.KillCoroutines(ahp);
-                            Log.Debug($"Killed coroutine for {ply.Nickname}: RetainAHP.", SCP008X.Instance.Config.DebugMode);
-                            ply.AdrenalineHealth = 500f;
-                            break;
-                    }
-                    break;
-                case Team.TUT:
-                    break;
-                case Team.RIP:
-                    break;
-                case Team.MTF:
-                    Timing.RunCoroutine(Infection());
-                    Timing.KillCoroutines(ahp);
-                    Log.Debug($"Traded coroutines for {ply.Nickname}: RetainAHP -> Infection.", SCP008X.Instance.Config.DebugMode);
-                    break;
-                case Team.CDP:
-                    Timing.RunCoroutine(Infection());
-                    Timing.KillCoroutines(ahp);
-                    Log.Debug($"Traded coroutines for {ply.Nickname}: RetainAHP -> Infection.", SCP008X.Instance.Config.DebugMode);
-                    break;
-                case Team.CHI:
-                    Timing.RunCoroutine(Infection());
-                    Timing.KillCoroutines(ahp);
-                    Log.Debug($"Traded coroutines for {ply.Nickname}: RetainAHP -> Infection.", SCP008X.Instance.Config.DebugMode);
-                    break;
-                case Team.RSC:
-                    Timing.RunCoroutine(Infection());
-                    Timing.KillCoroutines(ahp);
-                    Log.Debug($"Traded coroutines for {ply.Nickname}: RetainAHP -> Infection.", SCP008X.Instance.Config.DebugMode);
-                    break;
-            }
-        }
+        if (_curAhp > 0)
+            _curAhp -= ev.Amount;
+        else
+            _curAhp = 0;
+    }
 
-        public IEnumerator<float> RetainAHP()
+    private void WhenRoleChange(ChangingRoleEventArgs ev)
+    {
+        if (ev.Player != _ply)
+            return;
+
+        switch (ev.Player.Role.Team)
         {
-            for(; ; )
-            {
-                if(ply.Role == RoleType.Scp0492)
+            case Team.SCPs:
+                switch (ev.NewRole)
                 {
-                    if (ply.AdrenalineHealth <= curAHP)
-                    {
-                        ply.AdrenalineHealth = curAHP;
-                    }
-                    else
-                    {
-                        if (ply.AdrenalineHealth >= SCP008X.Instance.Config.MaxAhp)
-                        {
-                            ply.AdrenalineHealth = SCP008X.Instance.Config.MaxAhp;
-                        }
-                        curAHP = ply.AdrenalineHealth;
-                    }
+                    case RoleTypeId.Scp0492:
+                        Timing.RunCoroutine(RetainAhp());
+                        Log.Debug($"Started coroutine for {_ply.Nickname}: RetainAHP.");
+                        break;
+                    case RoleTypeId.Scp096:
+                        Timing.KillCoroutines(_ahp);
+                        Log.Debug($"Killed coroutine for {_ply.Nickname}: RetainAHP.");
+                        _ply.MaxHealth = 500f;
+                        break;
                 }
-
-                yield return Timing.WaitForSeconds(0.05f);
-            }
+                break;
+            case Team.FoundationForces:
+            case Team.ChaosInsurgency:
+                Timing.RunCoroutine(Infection());
+                Timing.KillCoroutines(_ahp);
+                Log.Debug($"Traded coroutines for {_ply.Nickname}: RetainAHP -> Infection.");
+                break;
         }
-        public IEnumerator<float> Infection()
-        {
-            for(; ; )
-            {
-                ply.Health -= 2;
-                if(ply.Health <= 0)
-                {
-                    ply.Hurt(1,ply);
-                    ply.Health++;
-                    break;
-                }
+    }
 
-                yield return Timing.WaitForSeconds(2f);
+    private IEnumerator<float> RetainAhp()
+    {
+        for(; ; )
+        {
+            if(_ply.Role == RoleTypeId.Scp0492)
+            {
+                if (_ply.Health <= _curAhp)
+                {
+                    _ply.Health = _curAhp;
+                }
+                else
+                {
+                    if (_ply.Health >= Scp008X.Instance.Config.MaxAhp)
+                    {
+                        _ply.Health = Scp008X.Instance.Config.MaxAhp;
+                    }
+                    _curAhp = _ply.Health;
+                }
             }
+
+            yield return Timing.WaitForSeconds(0.05f);
+        }
+    }
+
+    private IEnumerator<float> Infection()
+    {
+        for(; ; )
+        {
+            _ply.Health -= 2;
+            if(_ply.Health <= 0)
+            {
+                _ply.Hurt(_ply, 1f, DamageType.Scp0492, null);
+                _ply.Health++;
+                break;
+            }
+
+            yield return Timing.WaitForSeconds(2f);
         }
     }
 }

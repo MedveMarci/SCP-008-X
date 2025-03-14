@@ -7,7 +7,7 @@ namespace SCP008X.API
     {
         public static bool Is008Infected(Player player)
         {
-            if(player.ReferenceHub.gameObject.TryGetComponent(out SCP008 scp008))
+            if(player.ReferenceHub.gameObject.TryGetComponent(out Scp008 scp008))
             {
                 return true;
             }

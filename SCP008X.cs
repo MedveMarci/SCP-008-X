@@ -5,77 +5,72 @@ using Player = Exiled.Events.Handlers.Player;
 using Server = Exiled.Events.Handlers.Server;
 using Exiled.Events.Handlers;
 
-namespace SCP008X
+namespace SCP008X;
+
+public class Scp008X : Plugin<Config>
 {
-    public class SCP008X : Plugin<Config>
+    internal static Scp008X Instance { get; } = new();
+    private Scp008X() { }
+
+    public override PluginPriority Priority => PluginPriority.Medium;
+
+    public override string Author => "DGvagabond && MedveMarci";
+    public override string Name => "Scp008X";
+    public override Version Version { get; } = new(2, 0, 0, 0);
+    public override Version RequiredExiledVersion { get; } = new(2, 1, 16);
+
+    private EventHandlers _events;
+
+    public override void OnEnabled()
     {
-        internal static SCP008X Instance { get; } = new SCP008X();
-        private SCP008X() { }
-        public bool outbreak {get; set; }
-
-        public override PluginPriority Priority { get; } = PluginPriority.Medium;
-
-        public override string Author { get; } = "DGvagabond";
-        public override string Name { get; } = "Scp008X";
-        public override Version Version { get; } = new Version(2, 0, 0, 0);
-        public override Version RequiredExiledVersion { get; } = new Version(2, 1, 16);
-
-        private EventHandlers events;
-        public static SCP008X Singleton;
-
-        public override void OnEnabled()
+        try
         {
-            try
-            {
-                base.OnEnabled();
-                RegisterEvents();
-            }
-
-            catch (Exception e)
-            {
-                Log.Error($"There was an error loading the plugin: {e}");
-            }
-        }
-        public override void OnDisabled()
-        {
-            base.OnDisabled();
-            UnregisterEvents();
-        }
-        public override void OnReloaded()
-        {
-            base.OnReloaded();
+            base.OnEnabled();
+            RegisterEvents();
         }
 
-        public void RegisterEvents()
+        catch (Exception e)
         {
-            Singleton = this;
-            events = new EventHandlers(this);
-
-            Player.Died += events.OnPlayerDied;
-            Player.Left += events.OnPlayerLeave;
-            Player.Dying += events.OnPlayerDying;
-            Player.Hurting += events.OnPlayerHurt;
-            Server.RoundEnded += events.OnRoundEnd;
-            Player.MedicalItemUsed += events.OnHealed;
-            Player.ChangingRole += events.OnRoleChange;
-            Scp049.StartingRecall += events.OnReviving;
-            Scp049.FinishingRecall += events.OnRevived;
-            Server.RoundStarted += events.OnRoundStart;
+            Log.Error($"There was an error loading the plugin: {e}");
         }
-        public void UnregisterEvents()
-        {
-            Player.ChangingRole -= events.OnRoleChange;
-            Scp049.StartingRecall -= events.OnReviving;
-            Scp049.FinishingRecall -= events.OnRevived;
-            Server.RoundStarted -= events.OnRoundStart;
-            Player.MedicalItemUsed -= events.OnHealed;
-            Server.RoundEnded -= events.OnRoundEnd;
-            Player.Hurting -= events.OnPlayerHurt;
-            Player.Dying -= events.OnPlayerDying;
-            Player.Left -= events.OnPlayerLeave;
-            Player.Died -= events.OnPlayerDied;
+    }
+    public override void OnDisabled()
+    {
+        base.OnDisabled();
+        UnregisterEvents();
+    }
 
-            events = null;
-        }
+    private void RegisterEvents()
+    {
+        _events = new EventHandlers();
+
+        Player.Died += _events.OnPlayerDied;
+        Player.Left += EventHandlers.OnPlayerLeave;
+        Player.Joined += EventHandlers.OnPlayerJoin;
+        Player.Dying += _events.OnPlayerDying;
+        Player.Hurting += _events.OnPlayerHurt;
+        Server.RoundEnded += _events.OnRoundEnd;
+        Player.UsedItem += _events.OnUsedItem;
+        Player.ChangingRole += _events.OnRoleChange;
+        Scp049.StartingRecall += EventHandlers.OnReviving;
+        Scp049.FinishingRecall += EventHandlers.OnRevived;
+        Server.RoundStarted += EventHandlers.OnRoundStart;
+    }
+
+    private void UnregisterEvents()
+    {
+        Player.ChangingRole -= _events.OnRoleChange;
+        Scp049.StartingRecall -= EventHandlers.OnReviving;
+        Scp049.FinishingRecall -= EventHandlers.OnRevived;
+        Server.RoundStarted -= EventHandlers.OnRoundStart;
+        Player.Joined -= EventHandlers.OnPlayerJoin;
+        Player.UsedItem -= _events.OnUsedItem;
+        Server.RoundEnded -= _events.OnRoundEnd;
+        Player.Hurting -= _events.OnPlayerHurt;
+        Player.Dying -= _events.OnPlayerDying;
+        Player.Left -= EventHandlers.OnPlayerLeave;
+        Player.Died -= _events.OnPlayerDied;
+
+        _events = null;
     }
 }
